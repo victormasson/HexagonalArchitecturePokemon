@@ -1,10 +1,19 @@
+mod api;
 mod domain;
 mod repositories;
 
-fn main() {
-    let v1 = "hello".to_string();
-    let v2 = format!("v2 {}", v1);
+use std::sync::Arc;
 
-    println!("{}", v1);
-    println!("{}", v2);
+use repositories::pokemon::InMemoryRepository;
+
+#[macro_use]
+extern crate rouille;
+extern crate serde;
+
+fn main() {
+    let url = "localhost:8080";
+    println!("http://{}", &url);
+
+    let repo = Arc::new(InMemoryRepository::new());
+    api::serve(url, repo);
 }
