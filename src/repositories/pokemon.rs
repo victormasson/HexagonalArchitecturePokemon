@@ -1,73 +1,72 @@
+use crate::domain::entities::{Pokemon, PokemonName, PokemonNumber, PokemonTypes};
 use std::sync::Mutex;
 
-use crate::domain::entities::{PokemonName, PokemonNumber, PokemonTypes};
+pub enum Insert {
+    Ok(PokemonNumber),
+    Conflict,
+    Error,
+}
+
+pub enum InsertError {
+    Conflict,
+    Unknown,
+}
+
+pub trait Repository: Send + Sync {
+    fn insert(
+        &self,
+        number: PokemonNumber,
+        name: PokemonName,
+        types: PokemonTypes,
+    ) -> Result<Pokemon, InsertError>;
+}
+
+impl Repository for InMemoryRepository {
+    fn insert(
+        &self,
+        number: PokemonNumber,
+        name: PokemonName,
+        types: PokemonTypes,
+    ) -> Result<Pokemon, InsertError> {
+        if self.error {
+            return Err(InsertError::Unknown);
+        }
+
+        let mut lock = match self.pokemons.lock() {
+            Ok(lock) => lock,
+            _ => return Err(InsertError::Unknown),
+        };
+
+        if lock.iter().any(|pokemon| pokemon.number == number) {
+            return Err(InsertError::Conflict);
+        }
+
+        let number_clone = number.clone();
+        let pokemon = Pokemon::new(number_clone, name, types);
+        lock.push(pokemon.clone());
+        Ok(pokemon)
+    }
+}
 
 pub struct InMemoryRepository {
-    pokemons: Mutex<Vec<Pokemon>>,
     error: bool,
+    pokemons: Mutex<Vec<Pokemon>>,
 }
 
 impl InMemoryRepository {
     pub fn new() -> Self {
-        let pokemons = Mutex::new(vec![]);
+        let pokemons: Mutex<Vec<Pokemon>> = Mutex::new(vec![]);
         Self {
-            pokemons,
             error: false,
+            pokemons,
         }
     }
 
+    #[cfg(test)]
     pub fn with_error(self) -> Self {
         Self {
             error: true,
             ..self
         }
     }
-}
-
-pub trait Repository: Send + Sync {
-    fn insert(&self, number: PokemonNumber, name: PokemonName, types: PokemonTypes) -> Insert;
-}
-
-impl Repository for InMemoryRepository {
-    fn insert(&self, number: PokemonNumber, name: PokemonName, types: PokemonTypes) -> Insert {
-        if self.error {
-            return Insert::Error;
-        }
-
-        let mut pokemons_lock = match self.pokemons.lock() {
-            Ok(lock) => lock,
-            _ => return Insert::Error,
-        };
-
-        if pokemons_lock.iter().any(|pokemon| pokemon.number == number) {
-            return Insert::Conflict;
-        }
-
-        let number_clone = number.clone();
-        let p = Pokemon::new(number, name, types);
-        pokemons_lock.push(p);
-        Insert::Ok(number_clone)
-    }
-}
-
-pub struct Pokemon {
-    pub number: PokemonNumber,
-    name: PokemonName,
-    types: PokemonTypes,
-}
-
-impl Pokemon {
-    pub fn new(number: PokemonNumber, name: PokemonName, types: PokemonTypes) -> Self {
-        Self {
-            number,
-            name,
-            types,
-        }
-    }
-}
-
-pub enum Insert {
-    Ok(PokemonNumber),
-    Conflict,
-    Error,
 }

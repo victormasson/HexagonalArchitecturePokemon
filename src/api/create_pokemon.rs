@@ -1,40 +1,47 @@
-use std::sync::Arc;
-
-use crate::{api::Status, domain::create_pokemon, repositories::pokemon::Repository};
+use crate::api::Status;
+use crate::domain::create_pokemon;
+use crate::repositories::pokemon::Repository;
 use rouille;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
-#[derive(Serialize)]
-struct Response {
-    message: String,
-}
-
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct Request {
     number: u16,
     name: String,
     types: Vec<String>,
 }
 
+#[derive(Serialize)]
+struct Response {
+    number: u16,
+    name: String,
+    types: Vec<String>,
+}
+
 pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Response {
-    println!("");
-    let resReq = rouille::input::json_input::<Request>(req);
-    println!("{:#?}", &resReq);
-    let reqRepo = match resReq {
+    let req = match rouille::input::json_input::<Request>(req) {
         Ok(req) => create_pokemon::Request {
             number: req.number,
             name: req.name,
             types: req.types,
         },
-        Err(e) => return rouille::Response::from(Status::BadRequest),
+        _ => return rouille::Response::from(Status::BadRequest),
     };
 
-    match create_pokemon::execute(repo, reqRepo) {
-        create_pokemon::Response::Ok(number) => rouille::Response::json(&Response {
-            message: number.to_string(),
+    // rouille::Response::from(Status::InternalServerError)
+    match create_pokemon::execute(repo, req) {
+        Ok(create_pokemon::Response {
+            number,
+            name,
+            types,
+        }) => rouille::Response::json(&Response {
+            number,
+            name,
+            types,
         }),
-        create_pokemon::Response::BadRequest => rouille::Response::from(Status::BadRequest),
-        create_pokemon::Response::Conflict => rouille::Response::from(Status::Conflict),
-        create_pokemon::Response::Error => rouille::Response::from(Status::InternalServerError),
+        Err(create_pokemon::Error::BadRequest) => rouille::Response::from(Status::BadRequest),
+        Err(create_pokemon::Error::Conflict) => rouille::Response::from(Status::Conflict),
+        Err(create_pokemon::Error::Unknown) => rouille::Response::from(Status::InternalServerError),
     }
 }

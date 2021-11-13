@@ -8,6 +8,6 @@ struct Response {
 
 pub fn serve() -> rouille::Response {
     rouille::Response::json(&Response {
-        message: "Gotta catch them all!".to_string(),
+        message: String::from("Gotta catch them all!"),
     })
 }
