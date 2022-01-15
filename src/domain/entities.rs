@@ -1,8 +1,7 @@
 use std::cmp::PartialEq;
 use std::convert::TryFrom;
-use std::fmt;
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug, Eq, PartialOrd, Ord)]
 pub struct PokemonNumber(u16);
 
 impl PokemonNumber {
@@ -74,7 +73,9 @@ impl TryFrom<Vec<String>> for PokemonTypes {
             let mut pts = vec![];
             for t in ts.iter() {
                 match PokemonType::try_from(String::from(t)) {
-                    Ok(pt) => pts.push(pt),
+                    Ok(pt) => {
+                        pts.push(pt);
+                    }
                     _ => return Err(()),
                 }
             }
@@ -92,8 +93,8 @@ enum PokemonType {
 impl PokemonType {
     pub fn get_value(self) -> String {
         match self {
-            Electric => "Electric".to_string(),
-            Fire => "Fire".to_string(),
+            PokemonType::Electric => "Electric".to_string(),
+            PokemonType::Fire => "Fire".to_string(),
         }
     }
 }
@@ -119,7 +120,7 @@ impl From<PokemonType> for String {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Pokemon {
     pub number: PokemonNumber,
     pub name: PokemonName,
@@ -143,7 +144,11 @@ impl PokemonNumber {
     }
 
     pub fn charmander() -> Self {
-        Self(3)
+        Self(4)
+    }
+
+    pub fn bad() -> Self {
+        Self(0)
     }
 }
 

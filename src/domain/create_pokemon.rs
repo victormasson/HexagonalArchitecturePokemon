@@ -5,12 +5,14 @@ use std::sync::Arc;
 
 use super::entities::Pokemon;
 
+#[derive(Debug, Clone)]
 pub struct Request {
     pub number: u16,
     pub name: String,
     pub types: Vec<String>,
 }
 
+#[derive(Debug)]
 pub struct Response {
     pub number: u16,
     pub name: String,

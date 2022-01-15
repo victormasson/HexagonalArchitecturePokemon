@@ -3,12 +3,24 @@ use std::sync::Mutex;
 
 pub enum Insert {
     Ok(PokemonNumber),
-    Conflict,
-    Error,
+}
+
+pub enum FetchAllError {
+    Unknown,
+}
+
+pub enum FetchOneError {
+    NotFound,
+    Unknown,
 }
 
 pub enum InsertError {
     Conflict,
+    Unknown,
+}
+
+pub enum DeleteError {
+    NotFound,
     Unknown,
 }
 
@@ -19,6 +31,12 @@ pub trait Repository: Send + Sync {
         name: PokemonName,
         types: PokemonTypes,
     ) -> Result<Pokemon, InsertError>;
+
+    fn fetch_all(&self) -> Result<Vec<Pokemon>, FetchAllError>;
+
+    fn fetch_one(&self, number: PokemonNumber) -> Result<Pokemon, FetchOneError>;
+
+    fn delete(&self, number: PokemonNumber) -> Result<(), DeleteError>;
 }
 
 impl Repository for InMemoryRepository {
@@ -42,9 +60,61 @@ impl Repository for InMemoryRepository {
         }
 
         let number_clone = number.clone();
+
         let pokemon = Pokemon::new(number_clone, name, types);
+
         lock.push(pokemon.clone());
         Ok(pokemon)
+    }
+
+    fn fetch_all(&self) -> Result<Vec<Pokemon>, FetchAllError> {
+        if self.error {
+            return Err(FetchAllError::Unknown);
+        }
+
+        let lock = match self.pokemons.lock() {
+            Ok(lock) => lock,
+            _ => return Err(FetchAllError::Unknown),
+        };
+
+        let mut pokemons = lock.to_vec();
+        pokemons.sort_by(|a, b| a.number.cmp(&b.number));
+        Ok(pokemons)
+    }
+
+    fn fetch_one(&self, number: PokemonNumber) -> Result<Pokemon, FetchOneError> {
+        if self.error {
+            return Err(FetchOneError::Unknown);
+        }
+
+        let lock = match self.pokemons.lock() {
+            Ok(lock) => lock,
+            _ => return Err(FetchOneError::Unknown),
+        };
+
+        match lock.iter().find(|p| p.number == number) {
+            Some(pokemon) => Ok(pokemon.clone()),
+            None => Err(FetchOneError::NotFound),
+        }
+    }
+
+    fn delete(&self, number: PokemonNumber) -> Result<(), DeleteError> {
+        if self.error {
+            return Err(DeleteError::Unknown);
+        }
+
+        let mut lock = match self.pokemons.lock() {
+            Ok(lock) => lock,
+            _ => return Err(DeleteError::Unknown),
+        };
+
+        let index = match lock.iter().position(|p| p.number == number) {
+            Some(index) => index,
+            None => return Err(DeleteError::NotFound),
+        };
+
+        lock.remove(index);
+        Ok(())
     }
 }
 

@@ -2,6 +2,7 @@
 name = "HexagonalArchitecturePokemon"
 version = "0.1.0"
 edition = "2018"
+authors = ["Victor Masson"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -9,3 +10,5 @@ edition = "2018"
 rouille = "3.2.1"
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0.68"
+clap = "2.33.3"
+dialoguer = "0.8.0"
