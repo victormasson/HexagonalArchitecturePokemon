@@ -12,32 +12,41 @@ extern crate rouille;
 extern crate clap;
 extern crate serde;
 
-use clap::{crate_authors, crate_name, crate_version, App, Arg};
+use clap::{crate_authors, crate_name, crate_version, App, Arg, SubCommand};
+
+use crate::repositories::pokemon::SqliteRepository;
 
 fn main() {
-    let repo = Arc::new(InMemoryRepository::new());
-
     let matches = App::new(crate_name!())
         .version(crate_version!())
         .author(crate_authors!())
-        .arg(
-            Arg::with_name("cli")
-                .short("c")
-                .long("cli")
-                .help("Runs in CLI mode"),
-        )
-        .arg(
-            Arg::with_name("serve")
-                .short("s")
-                .long("serve")
-                .help("Runs in server mode"),
-        )
+        .subcommand(SubCommand::with_name("cli").about("Use cli <name>!"))
+        .subcommand(SubCommand::with_name("api").about("Use api <name>!"))
+        .arg(Arg::with_name("sqlite").long("sqlite").value_name("PATH"))
         .get_matches();
 
-    match matches.occurrences_of("cli") {
-        0 => run_api(repo),
-        _ => run_cli(repo),
+    let repo = build_repo(matches.value_of("sqlite"));
+
+    match matches.subcommand() {
+        ("cli", Some(_)) => {
+            run_cli(repo);
+        }
+        ("api", Some(_)) => {
+            run_api(repo);
+        }
+        _ => unreachable!(),
+    };
+}
+
+fn build_repo(sqlite_value: Option<&str>) -> Arc<dyn Repository> {
+    if let Some(path) = sqlite_value {
+        match SqliteRepository::try_new(path) {
+            Ok(repo) => return Arc::new(repo),
+            Err(_) => panic!("Error while creating sqlite repo"),
+        }
     }
+
+    Arc::new(InMemoryRepository::new())
 }
 
 fn run_api(repo: Arc<dyn Repository>) {
